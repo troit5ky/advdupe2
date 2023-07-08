@@ -1371,97 +1371,79 @@ local function AdvDupe2_Spawn()
 					break
 				end
 			end
-			
+
 			undo.Create(undotxt)
-				
 			local phys, edit, mass
-			local comanipulate = coroutine.create( function()
-
-				for k, v in pairs(Queue.CreatedEntities) do
-					if (not IsValid(v)) then
-						v = nil
+			for k, v in pairs(Queue.CreatedEntities) do
+				if (not IsValid(v)) then
+					v = nil
+				else
+					edit = true
+					if (Queue.EntityList[k].BuildDupeInfo.DupeParentID ~= nil and Queue.Parenting) then
+						v:SetParent(Queue.CreatedEntities[Queue.EntityList[k].BuildDupeInfo.DupeParentID])
+						if (v.Constraints ~= nil) then
+							for i, c in pairs(v.Constraints) do
+								if (c and constraints[c.Type]) then
+									edit = false
+									break
+								end
+							end
+						end
+						if (edit and IsValid(v:GetPhysicsObject())) then
+							mass = v:GetPhysicsObject():GetMass()
+							v:PhysicsInitShadow(false, false)
+							v:SetCollisionGroup(COLLISION_GROUP_WORLD)
+							v:GetPhysicsObject():EnableMotion(false)
+							v:GetPhysicsObject():Sleep()
+							v:GetPhysicsObject():SetMass(mass)
+						end
 					else
-						edit = true
-						if (Queue.EntityList[k].BuildDupeInfo.DupeParentID ~= nil and Queue.Parenting) then
-							v:SetParent(Queue.CreatedEntities[Queue.EntityList[k].BuildDupeInfo.DupeParentID])
-							if (v.Constraints ~= nil) then
-								for i, c in pairs(v.Constraints) do
-									if (c and constraints[c.Type]) then
-										edit = false
-										break
-									end
-								end
-							end
-							if (edit and IsValid(v:GetPhysicsObject())) then
-								mass = v:GetPhysicsObject():GetMass()
-								v:PhysicsInitShadow(false, false)
-								v:SetCollisionGroup(COLLISION_GROUP_WORLD)
-								v:GetPhysicsObject():EnableMotion(false)
-								v:GetPhysicsObject():Sleep()
-								v:GetPhysicsObject():SetMass(mass)
-							end
-						else
-							edit = false
-						end
-	
-						if (unfreeze) then
-							for i = 0, v:GetPhysicsObjectCount() do
-								phys = v:GetPhysicsObjectNum(i)
-								if (IsValid(phys)) then
-									phys:EnableMotion(true) -- Unfreeze the entitiy and all of its objects
-									phys:Wake()
-								end
-							end
-						elseif (preservefrozenstate) then
-							for i = 0, v:GetPhysicsObjectCount() do
-								phys = v:GetPhysicsObjectNum(i)
-								if (IsValid(phys)) then
-									if (Queue.EntityList[k].BuildDupeInfo.PhysicsObjects[i].Frozen) then
-										phys:EnableMotion(true) -- Restore the entity and all of its objects to their original frozen state
-										phys:Wake()
-									else
-										Queue.Player:AddFrozenPhysicsObject(v, phys)
-									end
-								end
-							end
-						else
-							for i = 0, v:GetPhysicsObjectCount() do
-								phys = v:GetPhysicsObjectNum(i)
-								if (IsValid(phys)) then
-									if (phys:IsMoveable()) then
-										phys:EnableMotion(false) -- Freeze the entitiy and all of its objects
-										Queue.Player:AddFrozenPhysicsObject(v, phys)
-									end
-								end
-							end
-						end
-	
-						if (not edit or not Queue.DisableParents) then
-							v:SetNotSolid(v.SolidMod)
-						end
-	
-						undo.AddEntity(v)
+						edit = false
 					end
-				
-					coroutine.yield()
 
+					if (unfreeze) then
+						if !CAMI.PlayerHasAccess(Queue.Player, 'advdupe2_unfreezeall') then AdvDupe2.Notify(Queue.Player, 'test', 1) continue end
+
+						for i = 0, v:GetPhysicsObjectCount() do
+							phys = v:GetPhysicsObjectNum(i)
+							if (IsValid(phys)) then
+								phys:EnableMotion(true) -- Unfreeze the entitiy and all of its objects
+								phys:Wake()
+							end
+						end
+					elseif (preservefrozenstate) then
+						for i = 0, v:GetPhysicsObjectCount() do
+							phys = v:GetPhysicsObjectNum(i)
+							if (IsValid(phys)) then
+								if (Queue.EntityList[k].BuildDupeInfo.PhysicsObjects[i].Frozen) then
+									phys:EnableMotion(true) -- Restore the entity and all of its objects to their original frozen state
+									phys:Wake()
+								else
+									Queue.Player:AddFrozenPhysicsObject(v, phys)
+								end
+							end
+						end
+					else
+						for i = 0, v:GetPhysicsObjectCount() do
+							phys = v:GetPhysicsObjectNum(i)
+							if (IsValid(phys)) then
+								if (phys:IsMoveable()) then
+									phys:EnableMotion(false) -- Freeze the entitiy and all of its objects
+									Queue.Player:AddFrozenPhysicsObject(v, phys)
+								end
+							end
+						end
+					end
+
+					if (not edit or not Queue.DisableParents) then
+						v:SetNotSolid(v.SolidMod)
+					end
+
+					undo.AddEntity(v)
 				end
-
-			end )
-
-			local temphook = 'AdvDupe2_PropManipulate_' .. SysTime()
-			hook.Add( 'Tick', temphook, function()
-				
-				if coroutine.status( comanipulate ) == 'dead' then 
-					undo.SetPlayer(Queue.Player)
-					undo.Finish(undotxt)
-
-					hook.Remove( 'Tick', temphook ) 
-				end
-				
-				coroutine.resume( comanipulate  )
-
-			end )
+			end
+			undo.SetPlayer(Queue.Player)
+			undo.Finish(undotxt)
 
 			hook.Call("AdvDupe_FinishPasting", nil, {
 				{
