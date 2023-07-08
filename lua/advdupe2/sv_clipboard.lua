@@ -1402,22 +1402,26 @@ local function AdvDupe2_Spawn()
 					end
 
 					if (unfreeze) then
-						if !CAMI.PlayerHasAccess(Queue.Player, 'advdupe2_unfreezeall') then AdvDupe2.Notify(Queue.Player, 'test', 1) continue end
+						if CAMI.PlayerHasAccess(Queue.Player, 'advdupe2_unfreezeall') then
 
-						for i = 0, v:GetPhysicsObjectCount() do
-							phys = v:GetPhysicsObjectNum(i)
-							if (IsValid(phys)) then
-								phys:EnableMotion(true) -- Unfreeze the entitiy and all of its objects
-								phys:Wake()
+							for i = 0, v:GetPhysicsObjectCount() do
+								phys = v:GetPhysicsObjectNum(i)
+								if (IsValid(phys)) then
+									phys:EnableMotion(true) -- Unfreeze the entitiy and all of its objects
+									phys:Wake()
+								end
 							end
-						end
+
+						else AdvDupe2.Notify(Queue.Player, 'You have no access to unfreeze all!', 1) end
 					elseif (preservefrozenstate) then
 						for i = 0, v:GetPhysicsObjectCount() do
 							phys = v:GetPhysicsObjectNum(i)
 							if (IsValid(phys)) then
 								if (Queue.EntityList[k].BuildDupeInfo.PhysicsObjects[i].Frozen) then
-									phys:EnableMotion(true) -- Restore the entity and all of its objects to their original frozen state
-									phys:Wake()
+									if CAMI.PlayerHasAccess(Queue.Player, 'advdupe2_unfreezeall') then
+										phys:EnableMotion(true) -- Restore the entity and all of its objects to their original frozen state
+										phys:Wake()
+									else AdvDupe2.Notify(Queue.Player, 'You have no access to unfreeze all!', 1) end
 								else
 									Queue.Player:AddFrozenPhysicsObject(v, phys)
 								end
