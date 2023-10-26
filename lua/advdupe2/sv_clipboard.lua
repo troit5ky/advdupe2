@@ -13,6 +13,8 @@ AdvDupe2.JobManager = {}
 AdvDupe2.JobManager.PastingHook = false
 AdvDupe2.JobManager.Queue = {}
 
+local debugConvar = GetConVar("AdvDupe2_DebugInfo")
+
 local constraints = {
 	Weld       = true,
 	Axis       = true,
@@ -54,7 +56,9 @@ local function CopyClassArgTable(tab)
 					newtable[k] = v
 				end
 			else
-				print("[AdvDupe2] ClassArg table with key \"" .. tostring(k) .. "\" has unsupported value of type \"".. type(v) .."\"!\n")
+				if debugConvar:GetBool() then
+					print("[AdvDupe2] ClassArg table with key \"" .. tostring(k) .. "\" has unsupported value of type \"".. type(v) .."\"!")
+				end
 			end
 		end
 		return newtable
@@ -132,6 +136,9 @@ local function CopyEntTable(Ent, Offset)
 
 	if EntityClass then
 		for iNumber, Key in pairs(EntityClass.Args) do
+			if gtSetupTable.SPECIAL[Key] then
+				Tab = CopyClassArgTable(EntTable)
+			end
 			-- Ignore keys from old system
 			if (not gtSetupTable.POS[Key] and
 					not gtSetupTable.ANG[Key] and
@@ -143,9 +150,8 @@ local function CopyEntTable(Ent, Offset)
 					else
 						Tab[Key] = EntTable[Key]
 					end
-				elseif varType ~= TYPE_NIL then
-					print("[AdvDupe2] Entity ClassArg \"" .. Key .. "\" of type \"" .. Ent:GetClass() ..
-									"\" has unsupported value of type \"" .. type(EntTable[Key]) .. "\"!\n")
+				elseif varType ~= TYPE_NIL and debugConvar:GetBool() then
+					print("[AdvDupe2] Entity ClassArg \"" .. Key .. "\" of type \"" .. Ent:GetClass() .. "\" has unsupported value of type \"" .. type(EntTable[Key]) .. "\"!\n")
 				end
 			end
 		end
@@ -1479,7 +1485,7 @@ end
 local ticktotal = 0
 local function ErrorCatchSpawning()
 
-	ticktotal = ticktotal + AdvDupe2.SpawnRate
+	ticktotal = ticktotal + math.max(GetConVarNumber("AdvDupe2_SpawnRate"), 0.01)
 	while ticktotal >= 1 do
 		ticktotal = ticktotal - 1
 		local status, err = pcall(AdvDupe2_Spawn)
